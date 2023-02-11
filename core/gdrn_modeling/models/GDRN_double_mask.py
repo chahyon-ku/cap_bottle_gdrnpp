@@ -104,6 +104,9 @@ class GDRN_DoubleMask(nn.Module):
             conv_feat = self.neck(conv_feat)
         vis_mask, full_mask, coor_x, coor_y, coor_z, region = self.geo_head_net(conv_feat)
 
+        # print(coor_x)
+        # print(gt_xyz[:, 0:1])
+
         if g_head_cfg.XYZ_CLASS_AWARE:
             assert roi_classes is not None
             coor_x = coor_x.view(bs, num_classes, self.xyz_out_dim // 3, out_res, out_res)

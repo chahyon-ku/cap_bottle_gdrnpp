@@ -10,6 +10,11 @@ from core.utils.data_utils import xyz_to_region_batch
 from lib.vis_utils.image import grid_show
 from core.utils.utils import get_emb_show
 from lib.pysixd import misc
+import logging
+import matplotlib.pyplot as plt
+
+
+logger = logging.getLogger(__name__)
 
 
 def batch_data(cfg, data, renderer=None, device="cuda", phase="train"):

@@ -579,6 +579,7 @@ class GDRN_Online_DatasetFromList(Base_DatasetFromList):
         obj_center = anno["centroid_2d"]
         delta_c = obj_center - bbox_center
         dataset_dict["trans_ratio"] = torch.as_tensor([delta_c[0] / bw, delta_c[1] / bh, z_ratio]).to(torch.float32)
+        # logger.warning({'roi_mask_trunc': roi_mask_trunc.sum(), 'roi_mask_visib': roi_mask_visib.sum(), 'roi_mask_full': roi_mask_full.sum()})
         return dataset_dict
 
     def read_data_test(self, dataset_dict):

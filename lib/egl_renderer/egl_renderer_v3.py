@@ -3,28 +3,8 @@ ref:
 https://github.com/NVlabs/PoseRBPF/tree/master/ycb_render
 store model infos in dict instead of list, which allows adding objects dynamically
 """
-import ctypes
-import os
-
-os.environ["PYOPENGL_PLATFORM"] = "egl"
-import os.path as osp
-import sys
-from pprint import pprint
-from PIL import Image
-import cv2
-import numpy as np
-from tqdm import tqdm
-import OpenGL.GL as GL
-import torch
-from PIL import Image
-import pyassimp
-from pyassimp import load, release
-from transforms3d.euler import euler2quat, mat2euler, quat2euler
-from transforms3d.quaternions import axangle2quat, mat2quat, qinverse, qmult
-
-cur_dir = osp.dirname(osp.abspath(__file__))
-# sys.path.insert(0, cur_dir)
-from . import CppEGLRenderer
+from lib.utils import logger
+from .glutils.egl_offscreen_context import OffscreenContext
 from .glutils.meshutil import (
     homotrans,
     lookat,
@@ -41,9 +21,27 @@ from .glutils.meshutil import (
     load_mesh_sixd,
     get_vertices_extent,
 )
+from . import CppEGLRenderer
+from transforms3d.quaternions import axangle2quat, mat2quat, qinverse, qmult
+from transforms3d.euler import euler2quat, mat2euler, quat2euler
+from pyassimp import load, release
+import pyassimp
+import torch
+import OpenGL.GL as GL
+from tqdm import tqdm
+import numpy as np
+import cv2
+from PIL import Image
+from pprint import pprint
+import sys
+import os.path as osp
+import ctypes
+import os
 
-from .glutils.egl_offscreen_context import OffscreenContext
-from lib.utils import logger
+os.environ["PYOPENGL_PLATFORM"] = "egl"
+
+cur_dir = osp.dirname(osp.abspath(__file__))
+# sys.path.insert(0, cur_dir)
 
 
 class EGLRenderer(object):
@@ -61,7 +59,7 @@ class EGLRenderer(object):
         vertex_scale=1.0,
         znear=0.25,
         zfar=6.0,
-        model_loadfn=None,
+        model_loadfn='None',
         use_cache=False,
         cad_model_colors=None,
     ):
@@ -127,7 +125,8 @@ class EGLRenderer(object):
                 self.shaders_dict[_s_type]["fragment"],
             )
         # self.texUnitUniform = GL.glGetUniformLocation(self.shader_programs['shader'], "uTexture")
-        self.texUnitUniform = GL.glGetUniformLocation(self.shader_programs["shader_textureless_texture"], "uTexture")
+        self.texUnitUniform = GL.glGetUniformLocation(
+            self.shader_programs["shader_textureless_texture"], "uTexture")
 
         self.lightpos = [0, 0, 0]
         self.lightcolor = [1, 1, 1]
@@ -276,13 +275,15 @@ class EGLRenderer(object):
             ],
         )
 
-        assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
+        assert GL.glCheckFramebufferStatus(
+            GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
 
         self.fov = 20
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
-        P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
+        P = perspective(self.fov, float(self.width) /
+                        float(self.height), 0.01, 100)
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
@@ -339,9 +340,11 @@ class EGLRenderer(object):
         )
 
         # enable array and set up data
-        positionAttrib = GL.glGetAttribLocation(self.shader_programs["shader_simple"], "aPosition")
+        positionAttrib = GL.glGetAttribLocation(
+            self.shader_programs["shader_simple"], "aPosition")
         GL.glEnableVertexAttribArray(0)
-        GL.glVertexAttribPointer(positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 8 * 4, None)
+        GL.glVertexAttribPointer(
+            positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 8 * 4, None)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
         GL.glBindVertexArray(0)
         return VAO
@@ -388,18 +391,20 @@ class EGLRenderer(object):
     def extent_to_bbox3d(self, xsize, ysize, zsize, is_gt=False):
         # yapf: disable
         bb = np.asarray([[-xsize / 2,  ysize / 2,  zsize / 2],
-                         [ xsize / 2,  ysize / 2,  zsize / 2],
+                         [xsize / 2,  ysize / 2,  zsize / 2],
                          [-xsize / 2, -ysize / 2,  zsize / 2],
-                         [ xsize / 2, -ysize / 2,  zsize / 2],
+                         [xsize / 2, -ysize / 2,  zsize / 2],
                          [-xsize / 2,  ysize / 2, -zsize / 2],
-                         [ xsize / 2,  ysize / 2, -zsize / 2],
+                         [xsize / 2,  ysize / 2, -zsize / 2],
                          [-xsize / 2, -ysize / 2, -zsize / 2],
-                         [ xsize / 2, -ysize / 2, -zsize / 2]])
+                         [xsize / 2, -ysize / 2, -zsize / 2]])
         # Set up rendering data
         if is_gt:
-            colors = [[0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 1, 1]]
+            colors = [[0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1],
+                      [0, 1, 1], [0, 1, 1], [0, 1, 1], [0, 1, 1]]
         else:
-            colors = [[0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0]]
+            colors = [[0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
+                      [1, 1, 0], [1, 1, 0], [1, 1, 0], [1, 1, 0]]
         # yapf: enable
         """
             0 -------- 1
@@ -441,7 +446,8 @@ class EGLRenderer(object):
         vertices = np.array(bb, dtype=np.float32)
         normals = np.zeros_like(vertices)
         colors = np.array(colors, dtype=np.float32)
-        vertexData = np.concatenate([vertices, normals, colors], axis=-1).astype(np.float32)
+        vertexData = np.concatenate(
+            [vertices, normals, colors], axis=-1).astype(np.float32)
 
         VAO = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(VAO)
@@ -457,14 +463,17 @@ class EGLRenderer(object):
 
         # enable array and set up data
         _shader_type = "shader_bbox"
-        positionAttrib = GL.glGetAttribLocation(self.shader_programs[_shader_type], "aPosition")
+        positionAttrib = GL.glGetAttribLocation(
+            self.shader_programs[_shader_type], "aPosition")
         # normalAttrib = GL.glGetAttribLocation(self.shader_programs[_shader_type], "aNormal")
-        colorAttrib = GL.glGetAttribLocation(self.shader_programs[_shader_type], "aColor")
+        colorAttrib = GL.glGetAttribLocation(
+            self.shader_programs[_shader_type], "aColor")
 
         GL.glEnableVertexAttribArray(0)
         GL.glEnableVertexAttribArray(2)
         # index, size, type, normalized, stride=vertexData.shape[1]*4, pointer
-        GL.glVertexAttribPointer(positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 9 * 4, None)  # 0
+        GL.glVertexAttribPointer(
+            positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 9 * 4, None)  # 0
         GL.glVertexAttribPointer(
             colorAttrib,
             3,
@@ -507,7 +516,8 @@ class EGLRenderer(object):
         res_model["is_textured"] = is_textured
         if obj_path.endswith("DAE"):
             is_materialed = True
-            vertices, faces, materials = self.load_robot_mesh(obj_path)  # return list of vertices, faces, materials
+            vertices, faces, materials = self.load_robot_mesh(
+                obj_path)  # return list of vertices, faces, materials
             res_model["vertices"] = vertices
             res_model["faces"] = faces
             res_model["materials"] = materials
@@ -529,13 +539,16 @@ class EGLRenderer(object):
                     vertexData,
                     GL.GL_STATIC_DRAW,
                 )
-                positionAttrib = GL.glGetAttribLocation(self.shader_programs["shader_material"], "aPosition")
-                normalAttrib = GL.glGetAttribLocation(self.shader_programs["shader_material"], "aNormal")
+                positionAttrib = GL.glGetAttribLocation(
+                    self.shader_programs["shader_material"], "aPosition")
+                normalAttrib = GL.glGetAttribLocation(
+                    self.shader_programs["shader_material"], "aNormal")
 
                 GL.glEnableVertexAttribArray(0)
                 GL.glEnableVertexAttribArray(1)
 
-                GL.glVertexAttribPointer(positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 24, None)
+                GL.glVertexAttribPointer(
+                    positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 24, None)
                 GL.glVertexAttribPointer(
                     normalAttrib,
                     3,
@@ -564,7 +577,8 @@ class EGLRenderer(object):
                 cad_model_color=cad_model_color,
             )
             is_cad = mesh["is_cad"]
-            logger.info("is_textured: {} | is_cad: {} | is_materialed: {}".format(is_textured, is_cad, is_materialed))
+            logger.info("is_textured: {} | is_cad: {} | is_materialed: {}".format(
+                is_textured, is_cad, is_materialed))
             # pprint(mesh)
             # check materials
             logger.info("{}".format(list(mesh.keys())))
@@ -578,7 +592,8 @@ class EGLRenderer(object):
                 ]
             ]
 
-            res_model["materials"] = [np.hstack([mat_diffuse, mat_specular, mat_ambient, mat_shininess])]
+            res_model["materials"] = [
+                np.hstack([mat_diffuse, mat_specular, mat_ambient, mat_shininess])]
             res_model["faces"] = faces = mesh["faces"]
             res_model["vertices"] = mesh["vertices"]
 
@@ -609,17 +624,22 @@ class EGLRenderer(object):
             )
 
             # enable array and set up data
-            positionAttrib = GL.glGetAttribLocation(self.shader_programs[_shader_type], "aPosition")
-            normalAttrib = GL.glGetAttribLocation(self.shader_programs[_shader_type], "aNormal")
-            colorAttrib = GL.glGetAttribLocation(self.shader_programs[_shader_type], "aColor")
-            coordsAttrib = GL.glGetAttribLocation(self.shader_programs[_shader_type], "aTexcoord")
+            positionAttrib = GL.glGetAttribLocation(
+                self.shader_programs[_shader_type], "aPosition")
+            normalAttrib = GL.glGetAttribLocation(
+                self.shader_programs[_shader_type], "aNormal")
+            colorAttrib = GL.glGetAttribLocation(
+                self.shader_programs[_shader_type], "aColor")
+            coordsAttrib = GL.glGetAttribLocation(
+                self.shader_programs[_shader_type], "aTexcoord")
 
             GL.glEnableVertexAttribArray(0)
             GL.glEnableVertexAttribArray(1)
             GL.glEnableVertexAttribArray(2)
             GL.glEnableVertexAttribArray(3)  # added
 
-            GL.glVertexAttribPointer(positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 11 * 4, None)  # 0
+            GL.glVertexAttribPointer(
+                positionAttrib, 3, GL.GL_FLOAT, GL.GL_FALSE, 11 * 4, None)  # 0
             GL.glVertexAttribPointer(
                 normalAttrib,
                 3,
@@ -658,7 +678,8 @@ class EGLRenderer(object):
 
     def load_robot_mesh(self, collada_path):
         # load collada file and return vertices, faces, materials
-        mesh_file = collada_path.strip().split("/")[-1]  # for offset the robot mesh
+        mesh_file = collada_path.strip().split(
+            "/")[-1]  # for offset the robot mesh
         scene = load(collada_path)  # load collada
         offset = self._offset_map[mesh_file]
         return self.recursive_load(scene.rootnode, [], [], [], offset)
@@ -681,20 +702,26 @@ class EGLRenderer(object):
                     mat_diffuse = [0.8, 0.8, 0.8]
 
                 if "ambient" in mat.properties:
-                    mat_ambient = np.array(mat.properties["ambient"])[:3]  # phong shader
+                    mat_ambient = np.array(mat.properties["ambient"])[
+                        :3]  # phong shader
                 else:
                     mat_ambient = [0, 0, 0]
 
                 if "shininess" in mat.properties:
-                    mat_shininess = max(mat.properties["shininess"], 1)  # avoid the 0 shininess
+                    # avoid the 0 shininess
+                    mat_shininess = max(mat.properties["shininess"], 1)
                 else:
                     mat_shininess = 1
 
-                mesh_vertex = homotrans(transform, mesh.vertices) - offset  # subtract the offset
-                mesh_normals = transform[:3, :3].dot(mesh.normals.transpose()).transpose()  # normal stays the same
-                vertices.append(np.concatenate([mesh_vertex, mesh_normals], axis=-1))
+                # subtract the offset
+                mesh_vertex = homotrans(transform, mesh.vertices) - offset
+                mesh_normals = transform[:3, :3].dot(
+                    mesh.normals.transpose()).transpose()  # normal stays the same
+                vertices.append(np.concatenate(
+                    [mesh_vertex, mesh_normals], axis=-1))
                 faces.append(mesh.faces)
-                materials.append(np.hstack([mat_diffuse, mat_specular, mat_ambient, mat_shininess]))
+                materials.append(
+                    np.hstack([mat_diffuse, mat_specular, mat_ambient, mat_shininess]))
                 # concat speed, render speed, bind & unbind, memory
         for child in node.children:
             self.recursive_load(child, vertices, faces, materials, offset)
@@ -712,12 +739,15 @@ class EGLRenderer(object):
         if model_ids is not None:
             assert len(model_ids) == len(model_paths)
         else:
-            model_ids = [i for i in range(len(model_paths))]  # ids default start from 0
+            # ids default start from 0
+            model_ids = [i for i in range(len(model_paths))]
         self.models.update({_id: {} for _id in model_ids})
 
         if model_colors is None:  # init render stuff
-            class_colors_all = [((x + 1) * 10, (x + 1) * 10, (x + 1) * 10) for x in range(len(model_paths))]
-            model_colors = [np.array(class_colors_all[i]) / 255.0 for i in range(len(model_paths))]
+            class_colors_all = [((x + 1) * 10, (x + 1) * 10, (x + 1) * 10)
+                                for x in range(len(model_paths))]
+            model_colors = [
+                np.array(class_colors_all[i]) / 255.0 for i in range(len(model_paths))]
         if texture_paths is None:
             texture_paths = ["" for i in range(len(model_paths))]
         if cad_model_colors is not None:
@@ -749,7 +779,8 @@ class EGLRenderer(object):
     def set_fov(self, fov):
         self.fov = fov
         # this is vertical fov (fovy)
-        P = perspective(self.fov, float(self.width) / float(self.height), 0.01, 100)
+        P = perspective(self.fov, float(self.width) /
+                        float(self.height), 0.01, 100)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_projection_matrix(self, K, width, height, znear, zfar):
@@ -880,7 +911,8 @@ class EGLRenderer(object):
         if instance_colors is not None:
             assert len(instance_colors) == len(obj_ids)
         else:
-            instance_colors = [self.models[obj_id]["seg_color"] for obj_id in obj_ids]
+            instance_colors = [self.models[obj_id]["seg_color"]
+                               for obj_id in obj_ids]
         if extents is not None:
             assert len(extents) == len(obj_ids)
         if gt_extents is not None:
@@ -902,13 +934,15 @@ class EGLRenderer(object):
             GL.glUseProgram(self.shader_programs["shader_simple"])
             GL.glBindVertexArray(self.grid)
             GL.glUniformMatrix4fv(
-                GL.glGetUniformLocation(self.shader_programs["shader_simple"], "V"),
+                GL.glGetUniformLocation(
+                    self.shader_programs["shader_simple"], "V"),
                 1,
                 GL.GL_TRUE,
                 self.V,
             )
             GL.glUniformMatrix4fv(
-                GL.glGetUniformLocation(self.shader_programs["shader_simple"], "uProj"),
+                GL.glGetUniformLocation(
+                    self.shader_programs["shader_simple"], "uProj"),
                 1,
                 GL.GL_FALSE,
                 self.P,
@@ -931,9 +965,11 @@ class EGLRenderer(object):
             shader = self.shader_programs[_shader_name]
             for i, extent in enumerate(extents):
                 GL.glUseProgram(shader)
-                _vertexData, _indices = self.extent_to_bbox3d(extent[0], extent[1], extent[2], is_gt=False)
+                _vertexData, _indices = self.extent_to_bbox3d(
+                    extent[0], extent[1], extent[2], is_gt=False)
                 GL.glBindVertexArray(_vertexData)
-                GL.glUniformMatrix4fv(GL.glGetUniformLocation(shader, "V"), 1, GL.GL_TRUE, self.V)
+                GL.glUniformMatrix4fv(GL.glGetUniformLocation(
+                    shader, "V"), 1, GL.GL_TRUE, self.V)
                 GL.glUniformMatrix4fv(
                     GL.glGetUniformLocation(shader, "uProj"),
                     1,
@@ -953,7 +989,8 @@ class EGLRenderer(object):
                     self.poses_rot[i],
                 )
 
-                GL.glDrawElements(GL.GL_LINES, len(_indices), GL.GL_UNSIGNED_INT, _indices)
+                GL.glDrawElements(GL.GL_LINES, len(_indices),
+                                  GL.GL_UNSIGNED_INT, _indices)
                 GL.glBindVertexArray(0)
                 GL.glUseProgram(0)
             GL.glLineWidth(1.0)
@@ -967,9 +1004,11 @@ class EGLRenderer(object):
             shader = self.shader_programs[_shader_name]
             for i, gt_extent in enumerate(gt_extents):
                 GL.glUseProgram(shader)
-                _vertexData, _indices = self.extent_to_bbox3d(gt_extent[0], gt_extent[1], gt_extent[2], is_gt=True)
+                _vertexData, _indices = self.extent_to_bbox3d(
+                    gt_extent[0], gt_extent[1], gt_extent[2], is_gt=True)
                 GL.glBindVertexArray(_vertexData)
-                GL.glUniformMatrix4fv(GL.glGetUniformLocation(shader, "V"), 1, GL.GL_TRUE, self.V)
+                GL.glUniformMatrix4fv(GL.glGetUniformLocation(
+                    shader, "V"), 1, GL.GL_TRUE, self.V)
                 GL.glUniformMatrix4fv(
                     GL.glGetUniformLocation(shader, "uProj"),
                     1,
@@ -989,13 +1028,14 @@ class EGLRenderer(object):
                     self.poses_rot[i],
                 )
 
-                GL.glDrawElements(GL.GL_LINES, len(_indices), GL.GL_UNSIGNED_INT, _indices)
+                GL.glDrawElements(GL.GL_LINES, len(_indices),
+                                  GL.GL_UNSIGNED_INT, _indices)
                 GL.glBindVertexArray(0)
                 GL.glUseProgram(0)
             GL.glLineWidth(1.0)
             GL.glClear(GL.GL_DEPTH_BUFFER_BIT)  # clear depth of 3d bboxes
         # size = 0
-        for i in range(len(obj_ids)):  ##################################
+        for i in range(len(obj_ids)):
             obj_id = obj_ids[i]
             cur_model = self.models[obj_id]
             is_textured = cur_model["is_textured"]
@@ -1069,7 +1109,8 @@ class EGLRenderer(object):
                         phong["diffuse"],
                     )
                     GL.glUniform1f(
-                        GL.glGetUniformLocation(shader, "uLightSpecularWeight"),
+                        GL.glGetUniformLocation(
+                            shader, "uLightSpecularWeight"),
                         phong["specular"],
                     )
 
@@ -1090,7 +1131,8 @@ class EGLRenderer(object):
 
                 GL.glUseProgram(shader)
                 # whether fixed-point data values should be normalized ( GL_TRUE ) or converted directly as fixed-point values ( GL_FALSE )
-                GL.glUniformMatrix4fv(GL.glGetUniformLocation(shader, "V"), 1, GL.GL_TRUE, self.V)
+                GL.glUniformMatrix4fv(GL.glGetUniformLocation(
+                    shader, "V"), 1, GL.GL_TRUE, self.V)
                 GL.glUniformMatrix4fv(
                     GL.glGetUniformLocation(shader, "uProj"),
                     1,
@@ -1143,9 +1185,11 @@ class EGLRenderer(object):
                 try:
                     if is_textured:
                         GL.glActiveTexture(GL.GL_TEXTURE0)  # Activate texture
-                        GL.glBindTexture(GL.GL_TEXTURE_2D, cur_model["texture"])
+                        GL.glBindTexture(GL.GL_TEXTURE_2D,
+                                         cur_model["texture"])
                         # GL.glUniform1i(self.texUnitUniform, 0)
-                        GL.glUniform1i(GL.glGetUniformLocation(shader, "uTexture"), 0)
+                        GL.glUniform1i(GL.glGetUniformLocation(
+                            shader, "uTexture"), 0)
                         GL.glUniform3f(
                             GL.glGetUniformLocation(shader, "uMatDiffuse"),
                             *cur_model["materials"][0][:3],
@@ -1162,7 +1206,8 @@ class EGLRenderer(object):
                             GL.glGetUniformLocation(shader, "uMatShininess"),
                             cur_model["materials"][0][-1],
                         )
-                    GL.glBindVertexArray(cur_model["VAOs"][0])  # Activate array
+                    GL.glBindVertexArray(
+                        cur_model["VAOs"][0])  # Activate array
                     # draw triangles
                     GL.glDrawElements(
                         GL.GL_TRIANGLES,
@@ -1190,7 +1235,8 @@ class EGLRenderer(object):
             )
             image_tensor.data = torch.flip(image_tensor, (0,))
             if to_bgr:
-                image_tensor.data[:, :, :3] = image_tensor.data[:, :, [2, 1, 0]]
+                image_tensor.data[:, :,
+                                  :3] = image_tensor.data[:, :, [2, 1, 0]]
             if to_255:
                 image_tensor.data = image_tensor.data * 255
         if seg_tensor is not None:
@@ -1270,11 +1316,15 @@ class EGLRenderer(object):
     def set_poses(self, poses, rot_type="mat"):
         assert rot_type in ["mat", "quat"], rot_type
         if rot_type == "quat":
-            self.poses_rot = [np.ascontiguousarray(quat2rotmat(item[:4])) for item in poses]
-            self.poses_trans = [np.ascontiguousarray(xyz2mat(item[4:7])) for item in poses]
+            self.poses_rot = [np.ascontiguousarray(
+                quat2rotmat(item[:4])) for item in poses]
+            self.poses_trans = [np.ascontiguousarray(
+                xyz2mat(item[4:7])) for item in poses]
         elif rot_type == "mat":
-            self.poses_rot = [np.ascontiguousarray(mat2rotmat(item[:3, :3])) for item in poses]
-            self.poses_trans = [np.ascontiguousarray(xyz2mat(item[:3, 3])) for item in poses]
+            self.poses_rot = [np.ascontiguousarray(
+                mat2rotmat(item[:3, :3])) for item in poses]
+            self.poses_trans = [np.ascontiguousarray(
+                xyz2mat(item[:3, 3])) for item in poses]
         else:
             raise ValueError("wrong rot_type: {}".format(rot_type))
 
@@ -1286,8 +1336,10 @@ class EGLRenderer(object):
         self.r.release()
 
     def remove_object(self, obj_id):
-        GL.glDeleteBuffers(len(self.models[obj_id]["VAOs"]), self.models[obj_id]["VAOs"])
-        GL.glDeleteBuffers(len(self.models[obj_id]["VBOs"]), self.models[obj_id]["VBOs"])
+        GL.glDeleteBuffers(
+            len(self.models[obj_id]["VAOs"]), self.models[obj_id]["VAOs"])
+        GL.glDeleteBuffers(
+            len(self.models[obj_id]["VBOs"]), self.models[obj_id]["VBOs"])
 
         if "texture" in self.models[obj_id] and self.models[obj_id]["texture"] != "":
             GL.glDeleteTextures([self.models[obj_id]["texture"]])
@@ -1316,8 +1368,10 @@ class EGLRenderer(object):
         self.fbo = None
         # TODO: check them
         for obj_id in self.models.keys():
-            GL.glDeleteBuffers(len(self.models[obj_id]["VAOs"]), self.models[obj_id]["VAOs"])
-            GL.glDeleteBuffers(len(self.models[obj_id]["VBOs"]), self.models[obj_id]["VBOs"])
+            GL.glDeleteBuffers(
+                len(self.models[obj_id]["VAOs"]), self.models[obj_id]["VAOs"])
+            GL.glDeleteBuffers(
+                len(self.models[obj_id]["VBOs"]), self.models[obj_id]["VBOs"])
             if "texture" in self.models[obj_id] and self.models[obj_id]["texture"] != "":
                 GL.glDeleteTextures([self.models[obj_id]["texture"]])
 
@@ -1375,39 +1429,36 @@ if __name__ == "__main__":
     from lib.vis_utils.image import grid_show
     from core.utils.utils import get_emb_show
     from core.utils.data_utils import get_2d_coord_np
+    import ref.cap_bottle_small as data_ref
 
     random.seed(0)
     # test_ycb_render()
     # exit(0)
 
-    width = 640
-    height = 480
-    znear = 0.25
-    zfar = 6.0
-    K = np.array([[572.4114, 0, 325.2611], [0, 573.57043, 242.04899], [0, 0, 1]])
+    gpu_id = 0
+    width = data_ref.width
+    height = data_ref.height
+    znear = data_ref.zNear
+    zfar = data_ref.zFar
+    # K = np.array([[572.4114, 0, 325.2611], [0, 573.57043, 242.04899], [0, 0, 1]])
+    K = np.array([[440.9264039920957, 0, 320.0], [
+                 0, 440.9263911506707, 240.0], [0, 0, 1]])
+    K = data_ref.camera_matrix
+    # K = np.array([[262.51953,    0.,       128.03119 ],
+    #                     [  0.,       262.51953,   75.677444],
+    #                     [  0.,         0.,         1.      ]])
     idx2class = {
-        1: "ape",
-        2: "benchvise",
-        3: "bowl",
-        4: "camera",
-        5: "can",
-        6: "cat",
-        7: "cup",
-        8: "driller",
-        9: "duck",
-        10: "eggbox",
-        11: "glue",
-        12: "holepuncher",
-        13: "iron",
-        14: "lamp",
-        15: "phone",
+        1: "01_cap",
+        2: "02_bottle",
     }
     classes = idx2class.values()
     classes = sorted(classes)
 
-    model_root = "datasets/BOP_DATASETS/lm/models/"
-    model_paths = [osp.join(model_root, "obj_{:06d}.ply".format(cls_idx)) for cls_idx in idx2class]
-    models = [inout.load_ply(model_path, vertex_scale=0.001) for model_path in model_paths]
+    model_root = "datasets/cap_bottle/models"
+    model_paths = [osp.join(model_root, "obj_{:06d}.ply".format(
+        cls_idx)) for cls_idx in idx2class]
+    models = [inout.load_ply(model_path, vertex_scale=1)
+              for model_path in model_paths]
     extents = [get_vertices_extent(model["pts"]) for model in models]
 
     coord2d = get_2d_coord_np(width=width, height=height, fmt="HWC")
@@ -1418,14 +1469,41 @@ if __name__ == "__main__":
         width=width,
         height=height,
         render_marker=False,
-        vertex_scale=0.001,
+        vertex_scale=1,
+        use_cache=True,
+    )
+
+    model_dir = data_ref.model_dir
+
+    obj_names = ["01_cap", "02_bottle"]
+    obj_ids = [data_ref.obj2id[_obj] for _obj in obj_names]
+    model_paths = [
+        osp.join(model_dir, "obj_{:06d}.ply".format(obj_id)) for obj_id in obj_ids]
+
+    texture_paths = None
+    if data_ref.texture_paths is not None:
+        texture_paths = [
+            osp.join(model_dir, "obj_{:06d}.png".format(obj_id)) for obj_id in obj_ids]
+
+    print(data_ref.camera_matrix)
+    renderer = EGLRenderer(
+        model_paths,
+        texture_paths=texture_paths,
+        vertex_scale=data_ref.vertex_scale,
+        znear=data_ref.zNear,
+        zfar=data_ref.zFar,
+        K=data_ref.camera_matrix,  # may override later
+        height=height,
+        width=width,
+        gpu_id=gpu_id,
         use_cache=True,
     )
     tensor_kwargs = {"device": torch.device("cuda"), "dtype": torch.float32}
     image_tensor = torch.empty((height, width, 4), **tensor_kwargs).detach()
     seg_tensor = torch.empty((height, width, 4), **tensor_kwargs).detach()
 
-    instance_mask_tensors = [torch.empty((height, width, 4), **tensor_kwargs).detach() for i in range(10)]
+    instance_mask_tensors = [torch.empty(
+        (height, width, 4), **tensor_kwargs).detach() for i in range(10)]
     pc_obj_tensor = torch.empty((height, width, 4), **tensor_kwargs).detach()
     pc_cam_tensor = torch.empty((height, width, 4), **tensor_kwargs).detach()
 
@@ -1461,6 +1539,12 @@ if __name__ == "__main__":
             # obj_ids = [obj_id, obj_id, obj_id, obj_id, obj_id]
             poses = [pose]
             obj_ids = [obj_id]
+            new_K = K.copy()
+            new_K[[0, 1], 2] -= np.array([205.33612, 300.97452, ])
+            render_input = {'obj_ids': [1], 'poses': [np.array([[ 0.2643757 ,  0.44876292,  0.85364944, -0.17099248],
+       [-0.96427476,  0.13834977,  0.22590603, -0.02597666],
+       [-0.01672394, -0.88287663,  0.46930707,  0.54240423]])], 'K': new_K}
+
             gt_extents = [extents[_obj_id] for _obj_id in obj_ids]
             # light_color = None
             # light_pos = (0, 0, 0)
@@ -1482,8 +1566,8 @@ if __name__ == "__main__":
                     background=None)
             """
             renderer.render(
-                obj_ids,
-                poses=poses,
+                # obj_ids,
+                # poses=poses,
                 image_tensor=image_tensor,
                 seg_tensor=seg_tensor,
                 rot_type="mat",
@@ -1493,6 +1577,8 @@ if __name__ == "__main__":
                 light_color=light_color,
                 extents=None,
                 background=None,
+                # K = K,
+                **render_input
             )
             for i in range(len(poses)):
                 renderer.render(
@@ -1504,6 +1590,7 @@ if __name__ == "__main__":
                     pc_cam_tensor=None,
                     light_pos=None,
                     light_color=None,
+                    K=K
                 )
             im = image_tensor[:, :, :3]
             t_render += time.perf_counter() - t0
@@ -1511,11 +1598,13 @@ if __name__ == "__main__":
 
             runs += 1
             # torch.save(im, 'im_{}.pth'.format(cls_name))
-            if False:  # show
+            if True:  # show
                 im = (im.cpu().numpy() + 0.5).astype(np.uint8)  # bgr
-                seg = (seg_tensor[:, :, 0].cpu().numpy() * 255 + 0.5).astype(np.uint8)
+                seg = (seg_tensor[:, :, 0].cpu().numpy()
+                       * 255 + 0.5).astype(np.uint8)
                 masks = [
-                    (ins_mask[:, :, 0].cpu().numpy() * 255 + 0.5).astype(np.uint8)
+                    (ins_mask[:, :, 0].cpu().numpy()
+                     * 255 + 0.5).astype(np.uint8)
                     for ins_mask in instance_mask_tensors[: len(poses)]
                 ]
                 print("seg unique: ", np.unique(seg))
@@ -1523,7 +1612,8 @@ if __name__ == "__main__":
                 depth = pc_cam_tensor[:, :, 2].cpu().numpy()
                 # depth_save = (depth * 1000).astype(np.uint16)
                 # cv2.imwrite("depth_{}.png".format(cls_name), depth_save)
-                img_vis = vis_image_mask_bbox_cv2(im, masks, bboxes=None, labels=None)
+                img_vis = vis_image_mask_bbox_cv2(
+                    im, masks, bboxes=None, labels=None)
 
                 xyz_np = xyz_ren.detach().cpu().numpy()
                 im_points, model_points = get_img_model_points_with_coords2d(

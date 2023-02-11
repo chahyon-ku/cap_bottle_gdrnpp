@@ -39,6 +39,7 @@ def setup(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_yolox_setup(cfg, args)
+    print(cfg)
     register_datasets_in_cfg(cfg)
     setproctitle("{}.{}".format(cfg.train.exp_name, get_time_str()))
     return cfg

@@ -668,8 +668,6 @@ def load_ply(path, vertex_scale=1.0):
                 if prop[0] == "n_corners":
                     if val != face_n_corners:
                         raise ValueError("Only triangular faces are supported.")
-                        # print("Number of face corners: " + str(val))
-                        # exit(-1)
                 elif prop[0] == "texcoord":
                     if val != face_n_corners * 2:
                         raise ValueError("Wrong number of UV face coordinates.")

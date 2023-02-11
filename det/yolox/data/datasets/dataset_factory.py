@@ -5,6 +5,8 @@ from detectron2.data import DatasetCatalog
 from . import (
     lm_pbr,
     lmo_bop_test,
+    test_100,
+    train_5k,
     ycbv_pbr,
     ycbv_d2,
     ycbv_bop_test,
@@ -22,6 +24,7 @@ from . import (
     itodd_pbr,
     itodd_d2,
     itodd_bop_test,
+    small_train
 )  # noqa
 
 cur_dir = osp.dirname(osp.abspath(__file__))
@@ -53,6 +56,9 @@ _DSET_MOD_NAMES = [
     "itodd_pbr",
     "itodd_d2",
     "itodd_bop_test",
+    'small_train',
+    'test_100',
+    'train_5k'
 ]
 
 logger = logging.getLogger(__name__)

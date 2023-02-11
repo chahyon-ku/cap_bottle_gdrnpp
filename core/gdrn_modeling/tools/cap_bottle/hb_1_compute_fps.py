@@ -11,7 +11,7 @@ import ref
 from core.utils.data_utils import get_fps_and_center
 
 
-ref_key = "hb"
+ref_key = "cap_bottle_small"
 data_ref = ref.__dict__[ref_key]
 
 model_dir = data_ref.model_dir
@@ -19,7 +19,7 @@ id2obj = data_ref.id2obj
 
 
 def main():
-    vertex_scale = 0.001
+    vertex_scale = 1#0.001
     fps_dict = {}
     for obj_id in tqdm(id2obj):
         print(obj_id)
@@ -35,7 +35,7 @@ def main():
         fps_dict[str(obj_id)]["fps64_and_center"] = get_fps_and_center(model["pts"], num_fps=64, init_center=True)
         fps_dict[str(obj_id)]["fps128_and_center"] = get_fps_and_center(model["pts"], num_fps=128, init_center=True)
         fps_dict[str(obj_id)]["fps256_and_center"] = get_fps_and_center(model["pts"], num_fps=256, init_center=True)
-    print(fps_dict)
+        print(fps_dict)
 
     save_path = osp.join(model_dir, "fps_points.pkl")
     mmcv.dump(fps_dict, save_path)
