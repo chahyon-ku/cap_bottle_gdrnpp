@@ -10,6 +10,7 @@ import time
 from collections import OrderedDict
 
 import cv2
+from matplotlib import pyplot as plt
 import mmcv
 import numpy as np
 import ref
@@ -745,8 +746,30 @@ def gdrn_inference_on_dataset(cfg, model, data_loader, evaluator, amp_test=False
                     roi_coord_2d_rel=batch.get("roi_coord_2d_rel", None),
                     roi_extents=batch.get("roi_extent", None),
                 )
+                print(batch)
+                print(out_dict)
+                input([(k, v.shape) if isinstance(v, torch.Tensor) else None for k, v in batch.items()])
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
+            
+            for i_sample in range(len(out_dict['rot'])):
+                mask = out_dict['mask'][i_sample, 0]
+                full_mask = out_dict['full_mask'][i_sample, 0]
+                coor_x = out_dict['coor_x'][i_sample, 0]
+                coor_y = out_dict['coor_y'][i_sample, 0]
+                coor_z = out_dict['coor_z'][i_sample, 0]
+                _, region = torch.max(out_dict['region'][i_sample], dim=0)
+                fig, axs = plt.subplots(2, 3, figsize=(15, 10))
+                axs[0, 0].imshow(mask.cpu().numpy())
+                axs[0, 1].imshow(full_mask.cpu().numpy())
+                axs[1, 0].imshow(coor_x.cpu().numpy())
+                axs[1, 1].imshow(coor_y.cpu().numpy())
+                axs[1, 2].imshow(coor_z.cpu().numpy())
+                axs[0, 2].imshow(region.cpu().numpy())
+                plt.show()
+
+            # input(out_dict)
+            
             cur_compute_time = time.perf_counter() - start_compute_time
             total_compute_time += cur_compute_time
             # NOTE: added

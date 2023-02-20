@@ -26,7 +26,7 @@ def main():
         json.dump(test, f, indent=1)
 
     data_dir = 'datasets/cap_bottle/test_100'
-    output_dir = 'output/yolox/bop_pbr/yolox_cap_bottle_5k/viz/test_100'
+    output_dir = 'viz/yolox/test_100'
 
     with open(pred_path, 'r') as f:
         data = json.load(f)

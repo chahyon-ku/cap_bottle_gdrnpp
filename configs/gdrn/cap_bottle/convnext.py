@@ -145,6 +145,7 @@ VAL = dict(
 
 TEST = dict(
     EVAL_PERIOD=0,
-    VIS=False,
+    VIS=True,
     TEST_BBOX_TYPE="est",
+    USE_PNP=True,
 )  # gt | est

@@ -106,7 +106,6 @@ class GDRN_DoubleMask(nn.Module):
 
         # print(coor_x)
         # print(gt_xyz[:, 0:1])
-
         if g_head_cfg.XYZ_CLASS_AWARE:
             assert roi_classes is not None
             coor_x = coor_x.view(bs, num_classes, self.xyz_out_dim // 3, out_res, out_res)
@@ -203,7 +202,7 @@ class GDRN_DoubleMask(nn.Module):
 
         if not do_loss:  # test
             out_dict = {"rot": pred_ego_rot, "trans": pred_trans}
-            if cfg.TEST.USE_PNP or cfg.TEST.SAVE_RESULTS_ONLY:
+            if cfg.TEST.USE_PNP or cfg.TEST.SAVE_RESULTS_ONLY or cfg.TEST.USE_DEPTH_REFINE:
                 # TODO: move the pnp/ransac inside forward
                 out_dict.update(
                     {
