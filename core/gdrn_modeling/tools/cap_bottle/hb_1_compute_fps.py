@@ -11,7 +11,7 @@ import ref
 from core.utils.data_utils import get_fps_and_center
 
 
-ref_key = "cap_bottle_small"
+ref_key = "cap_bottle_10k"
 data_ref = ref.__dict__[ref_key]
 
 model_dir = data_ref.model_dir

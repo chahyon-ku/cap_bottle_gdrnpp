@@ -3,6 +3,7 @@ import argparse
 import collections
 import sys
 import os
+import time
 from matplotlib import pyplot as plt
 import numpy as np
 import torch
@@ -26,12 +27,12 @@ import cap_dataset
 
 def add_arguments(parser):
     parser.add_argument('--gpu', type=str, default='1')
-    parser.add_argument('--yolox_model', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/output/yolox/bop_pbr/yolox_cap_bottle_5k/model_final.pth')
-    parser.add_argument('--yolox_config', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/configs/yolox/bop_pbr/yolox_cap_bottle_5k.py')
-    parser.add_argument('--gdrn_model', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/output/gdrn/cap_bottle/convnext_a6_AugCosyAAEGray_BG05_mlL1_DMask_amodalClipBox_classAware_hb/model_final.pth')
-    parser.add_argument('--gdrn_config', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/configs/gdrn/cap_bottle/convnext.py')
-    parser.add_argument('--data_dir', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/datasets/cap_bottle/test_100')
-    parser.add_argument('--output_dir', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/results')
+    parser.add_argument('--yolox_model', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/output/yolox/bop_pbr/yolox_cap_bottle_10k/model_final.pth')
+    parser.add_argument('--yolox_config', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/configs/yolox/bop_pbr/yolox_cap_bottle_10k.py')
+    parser.add_argument('--gdrn_model', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/output/gdrn/cap_bottle/convnext_10k/model_final.pth')
+    parser.add_argument('--gdrn_config', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/configs/gdrn/cap_bottle/convnext_10k.py')
+    parser.add_argument('--data_dir', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/datasets/cap_bottle/test_1k')
+    parser.add_argument('--output_dir', type=str, default='/home/rpm/Lab/cap_bottle/cap_bottle_gdrnpp/viz/all/test_1k')
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -64,23 +65,23 @@ def main(args):
     data_cfg.data_dir = args.data_dir
     dataset = cap_dataset.CapDataset(data_cfg)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)
+    results = []
     with torch.no_grad():
         yolox_model.eval()
         gdrn_model.eval()
         for i_batch, batch_data in enumerate(dataloader):
             yolox_outputs = yolox_model(batch_data.rgb_yolo.cuda())['det_preds']
             yolox_outputs = det.yolox.utils.boxes.postprocess(yolox_outputs, 2)
-            print(yolox_outputs)
             bbox_xyxy = yolox_outputs[0][:, :4]
             roi_classes = yolox_outputs[0][:, 6].long()
+            scores = yolox_outputs[0][:, 4]
 
             order = torch.argsort(roi_classes, dim=-1, descending=False)
             bbox_xyxy = bbox_xyxy[order]
             roi_classes = roi_classes[order]
-            roi_extents = torch.from_numpy(np.array([0.06, 0.06, 0.06])).cuda()
+            roi_extents = torch.from_numpy(np.array([0.08, 0.08, 0.08])).cuda()
 
             coord_2d = core.utils.data_utils.get_2d_coord_np(batch_data.rgb.shape[2], batch_data.rgb.shape[1]).transpose(1, 2, 0)
-            print(batch_data.rgb.shape, coord_2d.shape, coord_2d)
             for i_obj in range(2):
                 roi_whs = bbox_xyxy[i_obj, 2:] - bbox_xyxy[i_obj, :2]
                 roi_centers = (bbox_xyxy[i_obj, 2:] + bbox_xyxy[i_obj, :2]) / 2
@@ -95,15 +96,6 @@ def main(args):
                 roi_img = core.utils.data_utils.crop_resize_by_warp_affine(
                     batch_data.rgb[0].cpu().numpy(), roi_centers.cpu().numpy(), scale.item(), (256, 256), interpolation=cv2.INTER_LINEAR
                 ).transpose(2, 0, 1).astype(np.float32) / 255
-                print('roi_img', roi_img.shape, roi_img)
-                print('roi_classes', roi_classes.shape, roi_classes)
-                print('roi_cams', roi_cams.shape, roi_cams)
-                print('roi_whs', roi_whs.shape, roi_whs)
-                print('roi_centers', roi_centers.shape, roi_centers)
-                print('resize_ratios', resize_ratios.shape, resize_ratios)
-                print('roi_coord_2d', roi_coord_2d.shape, roi_coord_2d)
-                print('roi_coord_2d_rel', roi_coord_2d_rel.shape, roi_coord_2d_rel)
-                print('roi_extents', roi_extents.shape, roi_extents)
                 gdrn_outputs = gdrn_model(
                     torch.from_numpy(roi_img).cuda()[None, ...],
                     roi_classes=roi_classes[None, i_obj],
@@ -124,13 +116,27 @@ def main(args):
                 axs[1, 2].imshow(gdrn_outputs['coor_z'][0, 0].cpu())
                 cam_R_obj = gdrn_outputs['rot'][0].cpu().numpy()
                 cam_t_obj = gdrn_outputs['trans'][0].cpu().numpy().reshape(3, 1)
-                axis = 0.06 * np.array([[-0.5, 0.5, -0.5, -0.5], [-0.5, -0.5, 0.5, -0.5], [-0.5, -0.5, -0.5, 0.5]], dtype=float)
+                axis = 0.08 * np.array([[-0.5, 0.5, -0.5, -0.5], [-0.5, -0.5, 0.5, -0.5], [-0.5, -0.5, -0.5, 0.5]], dtype=float)
                 axis = batch_data.cam[0].numpy() @ (cam_R_obj @ axis + cam_t_obj)
                 axis = axis[:2] / axis[2]
                 axs[0, 0].plot(axis[0, [0, 1]], axis[1, [0, 1]], 'r')
                 axs[0, 0].plot(axis[0, [0, 2]], axis[1, [0, 2]], 'g')
                 axs[0, 0].plot(axis[0, [0, 3]], axis[1, [0, 3]], 'b')
-                plt.show()
+
+                os.makedirs(args.output_dir, exist_ok=True)
+                plt.savefig(os.path.join(args.output_dir, f'{i_batch}_{i_obj}.png'))
+                plt.close()
+
+                # rgb_path = batch_data.rgb_path[0]
+                # i_sample = int(os.path.basename(os.path.join(os.path.dirname(rgb_path), '../')))
+                # i_frame = int(os.path.basename(rgb_path).split('.')[0])
+                # # scene_id,im_id,obj_id,score,R,t,time
+                # results.append(f'{i_sample}, {i_frame}, {i_obj + 1}, {scores[i_obj].item()}, {cam_R_obj.flatten().tolist()}, {cam_t_obj.flatten().tolist()}, {time.time()}\n')
+    
+    with open('results.csv', 'w') as f:
+        f.write('scene_id,im_id,obj_id,score,R,t,time')
+        f.writelines(results)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

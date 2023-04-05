@@ -29,7 +29,8 @@ from core.gdrn_modeling.datasets import (
     itodd_d2,
     small_train,
     train_5k,
-    test_100
+    test_100,
+    train_10k
 )
 
 
@@ -63,7 +64,8 @@ _DSET_MOD_NAMES = [
     "itodd_d2",
     "small_train",
     "test_100",
-    'train_5k'
+    'train_5k',
+    'train_10k'
 ]
 
 logger = logging.getLogger(__name__)

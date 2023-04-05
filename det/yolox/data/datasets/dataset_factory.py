@@ -24,7 +24,8 @@ from . import (
     itodd_pbr,
     itodd_d2,
     itodd_bop_test,
-    small_train
+    small_train,
+    train_10k,
 )  # noqa
 
 cur_dir = osp.dirname(osp.abspath(__file__))
@@ -58,7 +59,8 @@ _DSET_MOD_NAMES = [
     "itodd_bop_test",
     'small_train',
     'test_100',
-    'train_5k'
+    'train_5k',
+    'train_10k',
 ]
 
 logger = logging.getLogger(__name__)

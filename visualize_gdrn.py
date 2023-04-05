@@ -53,13 +53,13 @@ def main(args):
             cam_K = np.array(scene_camera[f'{i_frame}']['cam_K']).reshape(3, 3)
             cam_R_m2c = np.array(scene_gt[f'{i_frame}'][0]['cam_R_m2c']).reshape(3, 3)
             cam_t_m2c = np.array(scene_gt[f'{i_frame}'][0]['cam_t_m2c']).reshape(3, 1)
-            points = 60 * np.array([[-0.5, 0.5, -0.5, -0.5], [-0.5, -0.5, 0.5, -0.5], [-0.5, -0.5, -0.5, 0.5]], dtype=float)
+            points = 80 * np.array([[-0.5, 0.5, -0.5, -0.5], [-0.5, -0.5, 0.5, -0.5], [-0.5, -0.5, -0.5, 0.5]], dtype=float)
             points = cam_K @ (cam_R_m2c @ points + cam_t_m2c)
             points = points / points[2]
 
             cam_R_m2c = np.array(scene_gt[f'{i_frame}'][1]['cam_R_m2c']).reshape(3, 3)
             cam_t_m2c = np.array(scene_gt[f'{i_frame}'][1]['cam_t_m2c']).reshape(3, 1)
-            points1 = 60 * np.array([[-0.5, 0.5, -0.5, -0.5], [-0.5, -0.5, 0.5, -0.5], [-0.5, -0.5, -0.5, 0.5]], dtype=float)
+            points1 = 80 * np.array([[-0.5, 0.5, -0.5, -0.5], [-0.5, -0.5, 0.5, -0.5], [-0.5, -0.5, -0.5, 0.5]], dtype=float)
             points1 = cam_K @ (cam_R_m2c @ points1 + cam_t_m2c)
             points1 = points1 / points1[2]
             
@@ -80,7 +80,7 @@ def main(args):
                     R = pred['cam_R_m2c']
                     t = pred['cam_t_m2c']
                     # print(cam_R_m2c, R, cam_t_m2c, t)
-                    points2 = 60 * np.array([[-0.5, 0.5, -0.5, -0.5], [-0.5, -0.5, 0.5, -0.5], [-0.5, -0.5, -0.5, 0.5]], dtype=float)
+                    points2 = 80 * np.array([[-0.5, 0.5, -0.5, -0.5], [-0.5, -0.5, 0.5, -0.5], [-0.5, -0.5, -0.5, 0.5]], dtype=float)
                     points2 = cam_K @ (R @ points2 + t)
                     points2 = points2 / points2[2]
                     plt.plot(points2[0, [0, 1]], points2[1, [0, 1]], 'm')
@@ -105,9 +105,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_dir', type=str, default='datasets/cap_bottle/test_100')
-    parser.add_argument('--pred_path', type=str, default='output/gdrn/cap_bottle/convnext_a6_AugCosyAAEGray_BG05_mlL1_DMask_amodalClipBox_classAware_hb/inference_model_final/test_100/convnext-test-iter0_cap_bottle-test.csv')
-    parser.add_argument('--output_dir', type=str, default='viz/gdrn/test_100')
+    parser.add_argument('--input_dir', type=str, default='datasets/cap_bottle/test_1k')
+    parser.add_argument('--pred_path', type=str, default='output/gdrn/cap_bottle/convnext_10k/inference_model_final/test_1k/convnext-10kRANSAC-PNP-test-iter0_cap_bottle-test.csv')
+    parser.add_argument('--output_dir', type=str, default='viz/gdrn/test_1k')
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
     main(args)

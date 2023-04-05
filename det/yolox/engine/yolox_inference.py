@@ -127,8 +127,6 @@ def yolox_inference_on_dataset(
         for idx, inputs in enumerate(progress_bar(data_loader)):
             imgs, _, scene_im_ids, info_imgs, ids = inputs
             imgs = imgs.type(tensor_type)
-            plt.imshow((imgs[0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
-            plt.show()
 
             compute_time = 0
 

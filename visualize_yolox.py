@@ -3,7 +3,7 @@ import os
 import cv2
 
 def main():
-    bop_path = 'output/yolox/bop_pbr/yolox_cap_bottle_5k/inference/test_100/coco_instances_results_bop.json'
+    bop_path = 'output/yolox/bop_pbr/yolox_cap_bottle_10k/inference/test_1k/coco_instances_results_bop.json'
 
     with open(bop_path, 'r') as f:
         data = json.load(f)
@@ -25,8 +25,8 @@ def main():
         print(test)
         json.dump(test, f, indent=1)
 
-    data_dir = 'datasets/cap_bottle/test_100'
-    output_dir = 'viz/yolox/test_100'
+    data_dir = 'datasets/cap_bottle/test_1k'
+    output_dir = 'viz/yolox/test_1k'
 
     with open(pred_path, 'r') as f:
         data = json.load(f)

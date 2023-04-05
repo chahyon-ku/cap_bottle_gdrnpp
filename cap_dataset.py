@@ -29,8 +29,8 @@ class CapSampleInfo:
     depth_scale = 0.0
     objects: typing.List[CapObjectInfo] = []
 
-CapSample = typing.NamedTuple('CapSample', [('rgb', np.ndarray), ('rgb_yolo', np.ndarray),
-                                            ('depth', np.ndarray), ('cam', np.ndarray), ('depth_scale', float),
+CapSample = typing.NamedTuple('CapSample', [('rgb', np.ndarray), ('rgb_yolo', np.ndarray), ('rgb_path', str),
+                                            ('cam', np.ndarray), ('depth_scale', float),
                                             ('masks', np.ndarray), ('masks_visibs', np.ndarray),
                                             ('bboxes_top_left', np.ndarray), ('bboxes_bottom_right', np.ndarray),
                                             ('cam_R_objs', np.ndarray), ('cam_t_objs', np.ndarray)])
@@ -87,12 +87,11 @@ class CapDataset(torch.utils.data.Dataset):
         depth_scale = self.data_entries[idx].depth_scale
         masks = np.stack([cv2.imread(obj_info.mask_path, cv2.IMREAD_ANYDEPTH) for obj_info in self.data_entries[idx].objects], axis=0)
         masks_visibs = np.stack([cv2.imread(obj_info.mask_visib_path, cv2.IMREAD_ANYDEPTH) for obj_info in self.data_entries[idx].objects], axis=0)
-        print(self.data_entries[idx].objects)
         bboxes_top_left = np.stack([obj_info.bbox_top_left for obj_info in self.data_entries[idx].objects], axis=0)
         bboxes_bottom_right = np.stack([obj_info.bbox_bottom_right for obj_info in self.data_entries[idx].objects], axis=0)
         cam_R_objs = np.stack([obj_info.cam_R_obj for obj_info in self.data_entries[idx].objects], axis=0)
         cam_t_objs = np.stack([obj_info.cam_t_obj for obj_info in self.data_entries[idx].objects], axis=0)
-        cap_sample = CapSample(rgb=rgb, rgb_yolo=rgb_yolo, depth=depth, cam=cam,
+        cap_sample = CapSample(rgb=rgb, rgb_yolo=rgb_yolo, depth=depth, cam=cam, rgb_path = self.data_entries[idx].rgb_path,
                                depth_scale=depth_scale, masks=masks, masks_visibs=masks_visibs,
                                bboxes_top_left=bboxes_top_left, bboxes_bottom_right=bboxes_bottom_right,
                                cam_R_objs=cam_R_objs, cam_t_objs=cam_t_objs)
